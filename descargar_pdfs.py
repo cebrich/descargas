@@ -4,7 +4,7 @@ URL de cada documento:
   https://estila.selae.es/documents/20143/<CARPETA>/<Título+con+más>
 
 Credenciales por variables de entorno (nunca en el código):
-  SELAE_USER, SELAE_PASS
+  S_USER, S_PASS
 Opcionales:
   SEMANA   -> fuerza un número de semana (por defecto prueba la semana ISO
               de hoy y la anterior, por si algún día quedó pendiente)
@@ -62,10 +62,10 @@ def url_documento(carpeta: str, titulo: str) -> str:
 
 
 def main() -> int:
-    user = os.environ.get("SELAE_USER")
-    password = os.environ.get("SELAE_PASS")
+    user = os.environ.get("S_USER")
+    password = os.environ.get("S_PASS")
     if not user or not password:
-        print("Faltan SELAE_USER / SELAE_PASS", file=sys.stderr)
+        print("Faltan S_USER / S_PASS", file=sys.stderr)
         return 1
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
