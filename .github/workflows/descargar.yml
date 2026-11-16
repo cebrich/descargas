@@ -19,8 +19,8 @@ jobs:
       - run: pip install -r requirements.txt && playwright install --with-deps chromium
       - run: python descargar_pdfs.py
         env:
-          SELAE_USER: ${{ secrets.SELAE_USER }}
-          SELAE_PASS: ${{ secrets.SELAE_PASS }}
+          S_USER: ${{ secrets.S_USER }}
+          S_PASS: ${{ secrets.S_PASS }}
       - name: Guardar PDFs nuevos
         run: |
           git config user.name "github-actions"
