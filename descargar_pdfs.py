@@ -12,6 +12,7 @@ Opcionales:
 """
 import os
 import sys
+import time
 from datetime import date
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -49,12 +50,54 @@ def semanas() -> list[int]:
     return [actual, actual - 1]
 
 
-def login(page, user: str, password: str) -> None:
-    page.goto(LOGIN_URL, wait_until="networkidle")
-    page.get_by_placeholder("Usuario").fill(user)
-    page.get_by_placeholder("Contraseña").fill(password)
-    page.get_by_role("button", name="Enviar").click()
-    page.wait_for_load_state("networkidle")
+def diagnostico(page, motivo: str) -> None:
+    """Guarda captura y HTML para ver qué cargó realmente en el runner."""
+    print(f"DIAGNÓSTICO: {motivo}", file=sys.stderr)
+    print(f"URL actual: {page.url}", file=sys.stderr)
+    for f in page.frames:
+        print(f"  frame: {f.url}", file=sys.stderr)
+    try:
+        page.screenshot(path="error_login.png", full_page=True)
+        Path("error_login.html").write_text(page.content(), encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        print(f"No se pudo guardar el diagnóstico: {e}", file=sys.stderr)
+
+
+def buscar_formulario(page, espera_s: int = 40):
+    """Devuelve (frame, campo_usuario, campo_clave) buscando en la página y en iframes."""
+    limite = time.time() + espera_s
+    while time.time() < limite:
+        for frame in page.frames:
+            clave = frame.locator("input[type='password']:visible")
+            if clave.count():
+                usuario = frame.locator(
+                    "input[type='text']:visible, input[type='email']:visible, "
+                    "input:not([type]):visible"
+                )
+                if usuario.count():
+                    return frame, usuario.first, clave.first
+        page.wait_for_timeout(500)
+    return None
+
+
+def login(page, user: str, password: str) -> bool:
+    page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60_000)
+    form = buscar_formulario(page)
+    if form is None:
+        diagnostico(page, "no aparece el formulario de login (usuario + contraseña)")
+        return False
+    frame, campo_usuario, campo_clave = form
+    campo_usuario.fill(user)
+    campo_clave.fill(password)
+    boton = frame.locator(
+        "button[type='submit'], input[type='submit'], button:has-text('Enviar')"
+    )
+    if boton.count():
+        boton.first.click()
+    else:
+        campo_clave.press("Enter")
+    page.wait_for_load_state("networkidle", timeout=60_000)
+    return True
 
 
 def url_documento(carpeta: str, titulo: str) -> str:
@@ -75,12 +118,12 @@ def main() -> int:
         browser = p.chromium.launch()
         context = browser.new_context()
         page = context.new_page()
-        login(page, user, password)
+        if not login(page, user, password):
+            return 2
 
         if "login" in page.url.lower():
-            print("El login parece haber fallado (sigue en la página de acceso).", file=sys.stderr)
-            page.screenshot(path="error_login.png")
-            return 2
+            diagnostico(page, "el login parece haber fallado (sigue en la página de acceso)")
+            return 3
 
         for carpeta, plantilla, base in DOCUMENTOS:
             semanas_probadas = semanas()
