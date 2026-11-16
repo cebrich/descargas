@@ -27,8 +27,8 @@ jobs:
         with:
           name: diagnostico-login
           path: |
-            error_login.png
-            error_login.html
+            error_*.png
+            error_*.html
           if-no-files-found: ignore
       - name: Guardar PDFs nuevos
         run: |
