@@ -19,6 +19,7 @@ from urllib.parse import quote_plus
 
 from playwright.sync_api import sync_playwright
 
+START_URL = "https://estila.selae.es/group/guest/"
 LOGIN_URL = "https://gus-forms.lbext.selae.es/gus/loginSELAE"
 BASE_URL = "https://estila.selae.es/documents/20143"
 OUT_DIR = Path(os.environ.get("OUT_DIR", "descargas"))
@@ -56,6 +57,11 @@ def diagnostico(page, motivo: str) -> None:
     print(f"URL actual: {page.url}", file=sys.stderr)
     for f in page.frames:
         print(f"  frame: {f.url}", file=sys.stderr)
+        try:
+            for html in f.eval_on_selector_all("input, button", "els => els.map(e => e.outerHTML)"):
+                print(f"    {html[:300]}", file=sys.stderr)
+        except Exception:  # noqa: BLE001
+            pass
     try:
         page.screenshot(path="error_login.png", full_page=True)
         Path("error_login.html").write_text(page.content(), encoding="utf-8")
@@ -68,20 +74,32 @@ def buscar_formulario(page, espera_s: int = 40):
     limite = time.time() + espera_s
     while time.time() < limite:
         for frame in page.frames:
-            clave = frame.locator("input[type='password']:visible")
-            if clave.count():
-                usuario = frame.locator(
-                    "input[type='text']:visible, input[type='email']:visible, "
-                    "input:not([type]):visible"
-                )
-                if usuario.count():
-                    return frame, usuario.first, clave.first
+            usuario = frame.get_by_placeholder("Usuario")
+            clave = frame.get_by_placeholder("Contraseña")
+            if usuario.count() and clave.count():
+                return frame, usuario.first, clave.first
+            # Plan B: los dos primeros campos de texto visibles (usuario, contraseña)
+            campos = frame.locator(
+                "input:visible:not([type='hidden']):not([type='submit'])"
+                ":not([type='button']):not([type='checkbox'])"
+            )
+            if campos.count() >= 2:
+                return frame, campos.nth(0), campos.nth(1)
         page.wait_for_timeout(500)
     return None
 
 
 def login(page, user: str, password: str) -> bool:
-    page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60_000)
+    # El login solo funciona si se llega desde eSTILA (si no, sale "Redirección
+    # incorrecta"), así que se empieza en estila.selae.es y se pulsa "Acceder".
+    page.goto(START_URL, wait_until="domcontentloaded", timeout=60_000)
+    acceder = page.get_by_text("Acceder", exact=True)
+    try:
+        acceder.first.wait_for(timeout=20_000)
+        acceder.first.click()
+    except Exception:  # noqa: BLE001
+        print("No se encontró el botón 'Acceder'; se prueba la URL de login directa.", file=sys.stderr)
+        page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60_000)
     form = buscar_formulario(page)
     if form is None:
         diagnostico(page, "no aparece el formulario de login (usuario + contraseña)")
