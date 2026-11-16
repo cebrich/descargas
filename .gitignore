@@ -1,4 +1,3 @@
 .env
 __pycache__/
-error_login.png
-error_login.html
+error_*
