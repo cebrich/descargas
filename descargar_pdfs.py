@@ -51,7 +51,7 @@ def semanas() -> list[int]:
     return [actual, actual - 1]
 
 
-def diagnostico(page, motivo: str) -> None:
+def diagnostico(page, motivo: str, nombre: str = "error_login") -> None:
     """Guarda captura y HTML para ver qué cargó realmente en el runner."""
     print(f"DIAGNÓSTICO: {motivo}", file=sys.stderr)
     print(f"URL actual: {page.url}", file=sys.stderr)
@@ -63,8 +63,18 @@ def diagnostico(page, motivo: str) -> None:
         except Exception:  # noqa: BLE001
             pass
     try:
-        page.screenshot(path="error_login.png", full_page=True)
-        Path("error_login.html").write_text(page.content(), encoding="utf-8")
+        print(f"Título: {page.title()!r}", file=sys.stderr)
+        print(f"Texto visible: {page.inner_text('body')[:500]!r}", file=sys.stderr)
+        sombras = page.evaluate(
+            "[...document.querySelectorAll('*')].filter(e => e.shadowRoot).length"
+        )
+        print(f"Elementos con shadow DOM: {sombras}", file=sys.stderr)
+        print(f"HTML (inicio): {page.content()[:1500]!r}", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001
+        print(f"No se pudo leer la página: {e}", file=sys.stderr)
+    try:
+        page.screenshot(path=f"{nombre}.png", full_page=True)
+        Path(f"{nombre}.html").write_text(page.content(), encoding="utf-8")
     except Exception as e:  # noqa: BLE001
         print(f"No se pudo guardar el diagnóstico: {e}", file=sys.stderr)
 
@@ -92,13 +102,15 @@ def buscar_formulario(page, espera_s: int = 40):
 def login(page, user: str, password: str) -> bool:
     # El login solo funciona si se llega desde eSTILA (si no, sale "Redirección
     # incorrecta"), así que se empieza en estila.selae.es y se pulsa "Acceder".
-    page.goto(START_URL, wait_until="domcontentloaded", timeout=60_000)
+    resp = page.goto(START_URL, wait_until="domcontentloaded", timeout=60_000)
+    print(f"Página de inicio: HTTP {resp.status if resp else '?'} -> {page.url}", file=sys.stderr)
     acceder = page.get_by_text("Acceder", exact=True)
     try:
         acceder.first.wait_for(timeout=20_000)
         acceder.first.click()
     except Exception:  # noqa: BLE001
-        print("No se encontró el botón 'Acceder'; se prueba la URL de login directa.", file=sys.stderr)
+        diagnostico(page, "no se encontró el botón 'Acceder' en la página de inicio", "error_inicio")
+        print("Se prueba la URL de login directa.", file=sys.stderr)
         page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=60_000)
     form = buscar_formulario(page)
     if form is None:
