@@ -21,6 +21,15 @@ jobs:
         env:
           S_USER: ${{ secrets.S_USER }}
           S_PASS: ${{ secrets.S_PASS }}
+      - name: Subir diagnóstico si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-login
+          path: |
+            error_login.png
+            error_login.html
+          if-no-files-found: ignore
       - name: Guardar PDFs nuevos
         run: |
           git config user.name "github-actions"
