@@ -1,0 +1,23 @@
+{
+ "jornada": 25,
+ "subtitulo": "Primera División (M) | Segunda División (M)",
+ "cierre": "28/11/2026 14:00",
+ "partidos": [
+  "Betis (M) - Rayo Vallecano (M)",
+  "Málaga (M) - Athletic Club (M)",
+  "Elche (M) - At. Madrid (M)",
+  "Real Madrid (M) - Alavés (M)",
+  "Valencia (M) - Osasuna (M)",
+  "Deportivo (M) - Barcelona (M)",
+  "Celta (M) - Villarreal (M)",
+  "Real Sociedad (M) - Sevilla (M)",
+  "Las Palmas (M) - Andorra (M)",
+  "Albacete (M) - Tenerife (M)",
+  "Eibar (M) - Burgos (M)",
+  "Granada (M) - Ceuta (M)",
+  "Mallorca (M) - Castellón (M)",
+  "Almería (M) - Sporting (M)",
+  "Espanyol (M) - Getafe (M)"
+ ],
+ "actualizado": "2026-11-25T15:32"
+}
